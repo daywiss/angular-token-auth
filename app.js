@@ -5,12 +5,24 @@
 
 'use strict';
 
+
 angular.module('myApp', [
-'ngRoute', 'ngSanitize', 'ngTouch',		//additional angular modules
+'ui.router', 'ngSanitize', 'ngTouch',		//additional angular modules
 'daywiss.angular-user'
-]).
-config(['$routeProvider', '$locationProvider', '$compileProvider', function($routeProvider, $locationProvider, $compileProvider) {
-	/**
+])
+.run(['dpaConstants',function(Constants){
+  //override contsants in here 
+  //Constants.states.errorState='app.err'
+}])
+.config(['$urlRouterProvider'
+    ,'$locationProvider'
+    ,'$compileProvider'
+    ,'$stateProvider', function(
+      $urlRouterProvider
+      ,$locationProvider
+      ,$compileProvider
+      ,$stateProvider) {
+	/**                                                                 
 	setup - whitelist, appPath, html5Mode
 	@toc 1.
 	*/
@@ -24,9 +36,37 @@ config(['$routeProvider', '$locationProvider', '$compileProvider', function($rou
 	var appPathRoute ='/';
 	var pagesPath =staticPath+'pages/';
 	
+  $urlRouterProvider.otherwise('/')
+  $stateProvider
+    .state('app.home',
+      {
+        url:'/'
+        ,templateUrl:pagesPath+'home/home.html'
+        ,controller:'HomeCtrl'
+        ,accessLevel:window.accessLevels.public
+      })
+    .state('app.admin',
+      {
+        url:'/admin'
+        ,templateUrl:pagesPath+'admin/admin.html'
+        ,controller:'AdminCtrl'
+        ,accessLevel:window.accessLevels.admin
+      })
+    .state('app.error',
+      {
+        url:'/error'
+        ,controller:'ErrorCtrl'
+        ,templateUrl:pagesPath+'error/error.html'
+      })
+    .state('app.login',
+      {
+        url:'/login'
+        ,controller:'LoginCtrl'
+        ,templateUrl:pagesPath+'login/login.html'
+      })
 	
-	$routeProvider.when(appPathRoute+'home', {templateUrl: pagesPath+'home/home.html'});
+	//$routeProvider.when(appPathRoute+'home', {templateUrl: pagesPath+'home/home.html'});
 
-	$routeProvider.otherwise({redirectTo: appPathRoute+'home'});
+	//$routeProvider.otherwise({redirectTo: appPathRoute+'home'});
 	
 }]);

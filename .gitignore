@@ -12,6 +12,8 @@ lib-cov
 pids
 logs
 results
+*.swp
+scratch
 
 node_modules
 

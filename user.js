@@ -7,14 +7,381 @@
 
 'use strict';
 
-angular.module('daywiss.angular-user', [])
+angular.module('daywiss.angular-user.constants',[])
+.constant('dpaConstants',{
+  urls:{
+    users:'/api/users'
+    ,login:'/api/login'
+    ,logout:'/api/logout'
+  }
+  ,states:{
+      errorState:'app.error'
+      ,logoutState:'app.home'
+  }
+})
+
+angular.module('daywiss.angular-user',[
+              'daywiss.angular-user.loginService'
+              ,'daywiss.angular-user.grandfather'
+              ,'daywiss.angular-user.constants'
+              ])
+angular.module('daywiss.angular-user.loginService'
+    , ['angular-data.DSCacheFactory','daywiss.angular-user.constants'])
+.provider('loginService',['dpaConstants',function (Constants){
+  //console.log(Constants)
+  var userToken = localStorage.getItem('userToken')
+  var errorState = Constants.states.errorState
+  var logoutState = Constants.states.logoutState
+
+  this.$get = function ($rootScope, $http, $q, $state) {
+    //console.log(STATES)
+    //Low-level, private functions.
+    var setHeaders = function (token) {
+      if (!token) {
+        delete $http.defaults.headers.common['X-Token'];
+        return;
+      }
+      $http.defaults.headers.common['X-Token'] = token.toString();
+    };
+
+    var setToken = function (token) {
+      if (!token) {
+        localStorage.removeItem('userToken');
+      } else {
+        localStorage.setItem('userToken', token);
+      }
+      setHeaders(token);
+    };
+
+    var getLoginData = function () {
+      if (userToken) {
+        setHeaders(userToken);
+      } else {
+        wrappedService.userRole = userRoles.public;
+        wrappedService.isLogged = false;
+        wrappedService.doneLoading = true;
+      }
+    };
+
+    var managePermissions = function () {
+      // Register routing function.
+      $rootScope.$on('$stateChangeStart', function (event, to, toParams, from, fromParams) {
+
+      /*
+       * $stateChangeStart is a synchronous check to the accessLevels property
+       * if it's not set, it will setup a pendingStateChange and will let
+       * the grandfather resolve do his job.
+       *
+       * In short:
+       * If accessLevels is still undefined, it let the user change the state.
+       * Grandfather.resolve will either let the user in or reject the promise later!
+       */
+
+        if (wrappedService.userRole === null) {
+          wrappedService.doneLoading = false;
+          wrappedService.pendingStateChange = {
+            to: to,
+        toParams: toParams
+          };
+          return;
+        }
+
+        // if the state has undefined accessLevel, anyone can access it.
+        // NOTE: if `wrappedService.userRole === undefined` means the service still doesn't know the user role,
+        // we need to rely on grandfather resolve, so we let the stateChange success, for now.
+        if (to.accessLevel === undefined || to.accessLevel.bitMask & wrappedService.userRole.bitMask) {
+          angular.noop(); // requested state can be transitioned to.
+        } else {
+          event.preventDefault();
+          $rootScope.$emit('$statePermissionError');
+          $state.go(errorState, { error: 'unauthorized' }, { location: false, inherit: false });
+        }
+      });
+
+      
+      /*
+       *Gets triggered when a resolve isn't fulfilled
+       *NOTE: when the user doesn't have required permissions for a state, this event
+       *      it's not triggered.
+       *
+       *In order to redirect to the desired state, the $http status code gets parsed.
+       *If it's an HTTP code (ex: 403), could be prefixed with a string (ex: resolvename403),
+       *to handle same status codes for different resolve(s).
+       *This is defined inside $state.redirectMap.
+       */
+      $rootScope.$on('$stateChangeError', function (event, to, toParams, from, fromParams, error) {
+        /*
+         *This is a very clever way to implement failure redirection.
+         *You can use the value of redirectMap, based on the value of the rejection
+         *So you can setup DIFFERENT redirections based on different promise errors.
+         */
+        var errorObj, redirectObj;
+        // in case the promise given to resolve function is an $http request
+        // the error is a object containing the error and additional informations
+        error = (typeof error === 'object') ? error.status.toString() : error;
+        // in case of a random 4xx/5xx status code from server, user gets loggedout
+        // otherwise it *might* forever loop (look call diagram)
+        if (/^[45]\d{2}$/.test(error)) {
+          wrappedService.logoutUser();
+        }
+        
+        /*
+         *Generic redirect handling.
+         *If a state transition has been prevented and it's not one of the 2 above errors, means it's a
+         *custom error in your application.
+         *
+         *redirectMap should be defined in the $state(s) that can generate transition errors.
+         */
+        if (angular.isDefined(to.redirectMap) && angular.isDefined(to.redirectMap[error])) {
+          if (typeof to.redirectMap[error] === 'string') {
+            return $state.go(to.redirectMap[error], { error: error }, { location: false, inherit: false });
+          } else if (typeof to.redirectMap[error] === 'object') {
+            redirectObj = to.redirectMap[error];
+            return $state.go(redirectObj.state, { error: redirectObj.prefix + error }, { location: false, inherit: false });
+          }
+        }
+        return $state.go(errorState, { error: error }, { location: false, inherit: false });
+      });
+    };
+
+    
+    /*
+     *High level, public methods
+     */
+    var wrappedService = {
+      loginHandler: function (user, status, headers, config) {
+        /*
+         *
+         * Custom logic to manually set userRole goes here
+         *
+         * Commented example shows an userObj coming with a 'completed'
+         * property defining if the user has completed his registration process,
+         * validating his/her email or not.
+         *
+         * EXAMPLE:
+         */
+         if (user.hasValidatedEmail) {
+           wrappedService.userRole = userRoles.registered;
+         } else {
+           wrappedService.userRole = userRoles.invalidEmail;
+           $state.go('app.nagscreen');
+         }
+        // setup token
+        setToken(user.token);
+        // update user
+        angular.extend(wrappedService.user, user);
+        // flag true on isLogged
+        wrappedService.isLogged = true;
+        // update userRole
+        wrappedService.userRole = user.userRole;
+        return user;
+      },
+      loginUser: function (httpPromise) {
+        httpPromise.success(this.loginHandler);
+      },
+      logoutUser: function (httpPromise) {
+        
+        /*
+         *De-registers the userToken remotely
+         *then clears the loginService as it was on startup
+         */
+        setToken(null);
+        this.userRole = userRoles.public;
+        this.user = {};
+        this.isLogged = false;
+        $state.go(logoutState);
+      },
+      resolvePendingState: function (httpPromise) {
+        var checkUser = $q.defer(),
+        self = this,
+        pendingState = self.pendingStateChange;
+
+        // When the $http is done, we register the http result into loginHandler, `data` parameter goes into loginService.loginHandler
+        httpPromise.success(self.loginHandler);
+
+        httpPromise.then(
+            function success(httpObj) {
+              self.doneLoading = true;
+              // duplicated logic from $stateChangeStart, slightly different, now we surely have the userRole informations.
+              if (pendingState.to.accessLevel === undefined || pendingState.to.accessLevel.bitMask & self.userRole.bitMask) {
+                checkUser.resolve();
+              } else {
+                checkUser.reject('unauthorized');
+              }
+            },
+            function reject(httpObj) {
+              checkUser.reject(httpObj.status.toString());
+            }
+            );
+        
+         /*
+          *I setted up the state change inside the promises success/error,
+          *so i can safely assign pendingStateChange back to null.
+          */
+        self.pendingStateChange = null;
+        return checkUser.promise;
+      },
+      
+      //Public properties
+      userRole: null,
+      user: {},
+      isLogged: null,
+      pendingStateChange: null,
+      doneLoading: null
+    };
+
+    getLoginData();
+    managePermissions();
+
+    return wrappedService;
+  };
+}]);
+angular.module('daywiss.angular-user.grandfather', ['daywiss.angular-user.constants','ui.router'])
+.config(['$stateProvider','dpaConstants',function ($stateProvider,Constants) {
+  $stateProvider
+    .state('app', {
+      abstract: true,
+      template: '<ui-view></ui-view>',
+      resolve: {
+        'login': function (loginService, $q, $http) {
+          var roleDefined = $q.defer();
+
+          /*
+           * In case there is a pendingStateChange means the user requested a $state,
+           * but we don't know yet user's userRole.
+           *
+           * Calling resolvePendingState makes the loginService retrieve his userRole remotely.
+           */
+
+          if (loginService.pendingStateChange) {
+            return loginService.resolvePendingState($http.get(Constants.urls.users));
+          } else {
+            roleDefined.resolve();
+          }
+          return roleDefined.promise;
+        }
+      }
+    })
+  }])
 .factory('dwUser', [ function () {
 
-	//public methods & properties
-	var self ={
-	};
-	
-	//private methods and properties - should ONLY expose methods and properties publicly (via the 'return' object) that are supposed to be used; everything else (helper methods that aren't supposed to be called externally) should be private.
-	
-	return self;
+  //public methods & properties
+  var self ={
+  };
+  
+  //private methods and properties - should ONLY expose methods and properties publicly (via the 'return' object) that are supposed to be used; everything else (helper methods that aren't supposed to be called externally) should be private.
+  
+  return self;
 }]);
+
+/**
+ * Directly from fnakstad
+ * https://github.com/fnakstad/angular-client-side-auth/blob/master/client/js/routingConfig.js
+ */
+
+(function (exports) {
+
+  var config = {
+
+    /* List all the roles you wish to use in the app
+    * You have a max of 31 before the bit shift pushes the accompanying integer out of
+    * the memory footprint for an integer
+    */
+    roles: [
+      'public',
+      'user',
+      'admin'
+    ],
+
+    /*
+    Build out all the access levels you want referencing the roles listed above
+    You can use the "*" symbol to represent access to all roles
+     */
+    accessLevels: {
+      'public' : '*',
+      'anon': ['public'],
+      'user' : ['user', 'admin'],
+      'admin': ['admin']
+    }
+
+  };
+
+  
+  /*
+   *Method to build a distinct bit mask for each role
+   *It starts off with "1" and shifts the bit to the left for each element in the
+   *roles array parameter
+   */
+
+  function buildRoles(roles) {
+
+    var bitMask = "01";
+    var userRoles = {};
+
+    for (var role in roles) {
+      var intCode = parseInt(bitMask, 2);
+      userRoles[roles[role]] = {
+        bitMask: intCode,
+        title: roles[role]
+      };
+      bitMask = (intCode << 1).toString(2);
+    }
+
+    return userRoles;
+  }
+
+  /*
+   *This method builds access level bit masks based on the accessLevelDeclaration parameter which must
+   *contain an array for each access level containing the allowed user roles.
+   */
+  function buildAccessLevels(accessLevelDeclarations, userRoles) {
+
+    var accessLevels = {},
+        resultBitMask,
+        role;
+    for (var level in accessLevelDeclarations) {
+
+      if (typeof accessLevelDeclarations[level] === 'string') {
+        if (accessLevelDeclarations[level] === '*') {
+
+          resultBitMask = '';
+
+          for (role in userRoles) {
+            resultBitMask += "1";
+          }
+          //accessLevels[level] = parseInt(resultBitMask, 2);
+          accessLevels[level] = {
+            bitMask: parseInt(resultBitMask, 2),
+            title: accessLevelDeclarations[level]
+          };
+        }
+        else {
+          console.log("Access Control Error: Could not parse '" + accessLevelDeclarations[level] + "' as access definition for level '" + level + "'");
+        }
+      }
+      else {
+
+        resultBitMask = 0;
+        for (role in accessLevelDeclarations[level]) {
+          if (userRoles.hasOwnProperty(accessLevelDeclarations[level][role])) {
+            resultBitMask = resultBitMask | userRoles[accessLevelDeclarations[level][role]].bitMask;
+          }
+          else {
+            console.log("Access Control Error: Could not find role '" + accessLevelDeclarations[level][role] + "' in registered roles while building access for '" + level + "'");
+          }
+        }
+        accessLevels[level] = {
+          bitMask: resultBitMask,
+          title: accessLevelDeclarations[level][role]
+        };
+      }
+    }
+
+    return accessLevels;
+  }
+
+
+  exports.userRoles = buildRoles(config.roles);
+  exports.accessLevels = buildAccessLevels(config.accessLevels, exports.userRoles);
+
+})(typeof exports === 'undefined' ? this : exports);

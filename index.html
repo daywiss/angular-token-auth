@@ -7,18 +7,22 @@
 
 </head>
 <body>
-	<div ng-view></div>
+	<div ui-view></div>
 
-	<script type="text/javascript" src="bower_components/angular/angular.min.js"></script>
-	<script type="text/javascript" src="bower_components/angular-route/angular-route.min.js"></script>
-	<script type="text/javascript" src="bower_components/angular-sanitize/angular-sanitize.min.js"></script>
-	<script type="text/javascript" src="bower_components/angular-touch/angular-touch.min.js"></script>
+  <script type="text/javascript" src="bower_components/angular/angular.js"></script>
+  <script type="text/javascript" src="bower_components/angular-ui-router/release/angular-ui-router.min.js"></script>
+  <script type="text/javascript" src="bower_components/angular-sanitize/angular-sanitize.min.js"></script>
+  <script type="text/javascript" src="bower_components/angular-touch/angular-touch.min.js"></script>
+  <script type="text/javascript" src="bower_components/angular-cache/dist/angular-cache.js"></script>
 	
-	<script type="text/javascript" src="user.js"></script>
+  <script type="text/javascript" src="user.js"></script>
 	<!--<script type="text/javascript" src="user.min.js"></script>-->
 	
-	<script type="text/javascript" src="app.js"></script>
+  <script type="text/javascript" src="app.js"></script>
 	
-	<script type="text/javascript" src="pages/home/HomeCtrl.js"></script>
+  <script type="text/javascript" src="pages/home/HomeCtrl.js"></script>
+  <script type="text/javascript" src="pages/admin/AdminCtrl.js"></script>
+  <script type="text/javascript" src="pages/error/ErrorCtrl.js"></script>
+  <script type="text/javascript" src="pages/login/LoginCtrl.js"></script>
 </body>
 </html>
