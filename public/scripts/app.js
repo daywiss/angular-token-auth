@@ -34,36 +34,36 @@ angular.module('myApp', [
 	staticPath ='/';		//nodejs (local)
 	// staticPath ='/angular-user/';		//gh-pages
 	var appPathRoute ='/';
-	var pagesPath =staticPath+'pages/';
+	var pagesPath =staticPath;
 	
   $urlRouterProvider.otherwise('/')
   $stateProvider
     .state('app.home',
       {
         url:'/'
-        ,templateUrl:pagesPath+'home/home.html'
+        ,templateUrl:pagesPath+'index'
         ,controller:'HomeCtrl'
         ,accessLevel:window.accessLevels.public
       })
-    .state('app.admin',
-      {
-        url:'/admin'
-        ,templateUrl:pagesPath+'admin/admin.html'
-        ,controller:'AdminCtrl'
-        ,accessLevel:window.accessLevels.admin
-      })
-    .state('app.error',
-      {
-        url:'/error'
-        ,controller:'ErrorCtrl'
-        ,templateUrl:pagesPath+'error/error.html'
-      })
-    .state('app.login',
-      {
-        url:'/login'
-        ,controller:'LoginCtrl'
-        ,templateUrl:pagesPath+'login/login.html'
-      })
+    //.state('app.admin',
+      //{
+        //url:'/admin'
+        //,templateUrl:pagesPath+'partials/admin'
+        //,controller:'AdminCtrl'
+        //,accessLevel:window.accessLevels.admin
+      //})
+    //.state('app.error',
+      //{
+        //url:'/error'
+        //,controller:'ErrorCtrl'
+        //,templateUrl:pagesPath+'error'
+      //})
+    //.state('app.login',
+      //{
+        //url:'/login'
+        //,controller:'LoginCtrl'
+        //,templateUrl:pagesPath+'partials/login'
+      //})
 	
 	//$routeProvider.when(appPathRoute+'home', {templateUrl: pagesPath+'home/home.html'});
 
