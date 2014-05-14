@@ -5,9 +5,12 @@ var favicon = require('static-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var session = require('express-session')
 
 var routes = require('./routes/index');
 var api = require('./routes/api');
+
+var passport = require('./passport')
 
 var app = express();
 
@@ -21,10 +24,15 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
 app.use(cookieParser());
+app.use(session({ secret: 'keyboard cat', key: 'sid'}))
+//app.use(session());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(passport.initialize())
+app.use(passport.session())
 
-app.use('/', routes);
+
 app.use('/api', api);
+app.use('/', routes);
 
 /// catch 404 and forwarding to error handler
 app.use(function(req, res, next) {

@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+var path = require('path')
 
 /* GET home page. */
 router.get('/', function(req, res) {
@@ -8,6 +9,7 @@ router.get('/', function(req, res) {
 });
 
 
+//snippet from daftmonk/angular-fullstack generated file
 router.get('/partials/*',function(req, res) {
   var stripped = req.url.split('.')[0];
   var requestedView = path.join('./', stripped);

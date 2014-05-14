@@ -41,29 +41,29 @@ angular.module('myApp', [
     .state('app.home',
       {
         url:'/'
-        ,templateUrl:pagesPath+'index'
+        ,templateUrl:pagesPath+'partials/home'
         ,controller:'HomeCtrl'
         ,accessLevel:window.accessLevels.public
       })
-    //.state('app.admin',
-      //{
-        //url:'/admin'
-        //,templateUrl:pagesPath+'partials/admin'
-        //,controller:'AdminCtrl'
-        //,accessLevel:window.accessLevels.admin
-      //})
-    //.state('app.error',
-      //{
-        //url:'/error'
-        //,controller:'ErrorCtrl'
-        //,templateUrl:pagesPath+'error'
-      //})
-    //.state('app.login',
-      //{
-        //url:'/login'
-        //,controller:'LoginCtrl'
-        //,templateUrl:pagesPath+'partials/login'
-      //})
+    .state('app.admin',
+      {
+        url:'/admin'
+        ,templateUrl:pagesPath+'partials/admin'
+        ,controller:'AdminCtrl'
+        ,accessLevel:window.accessLevels.admin
+      })
+    .state('app.error',
+      {
+        url:'/error'
+        ,controller:'ErrorCtrl'
+        ,templateUrl:pagesPath+'partials/error'
+      })
+    .state('app.login',
+      {
+        url:'/login'
+        ,controller:'LoginCtrl'
+        ,templateUrl:pagesPath+'partials/login'
+      })
 	
 	//$routeProvider.when(appPathRoute+'home', {templateUrl: pagesPath+'home/home.html'});
 
