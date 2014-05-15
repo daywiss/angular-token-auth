@@ -21,15 +21,13 @@ var userStorage = {
 passport.use(new LocalStrategy(
   function(username,password,done){
     console.log(username,password)
-    if(userStorage[username]){
       var user = userStorage[username]
+      var err = {status:401, message:'No user found'}
     //db.users.byUsername.get(username,function(err,user){
-      if(err) return done('No User found ' + username,false)  
-      if(!user) return done('No user found',false)
+      if(!user) return done(err,false)
       if(user.password === password) return done(null,user)
-      done('Passwords dont match',false)
+      done({status:401,message:'Passwords dont match'},false)
     //})
-    }
   }
 ))
 passport.serializeUser(function(user,done){

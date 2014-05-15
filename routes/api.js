@@ -22,7 +22,7 @@ router.route('/users')
 router.route('/login')
   .post(passport.authenticate('local',{
     failureRedirect:'/'
-    ,successRedirect:'/'
+    ,successRedirect:'/admin'
   }))
 
 router.route('/logout')

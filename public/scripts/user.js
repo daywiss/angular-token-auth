@@ -164,7 +164,7 @@ angular.module('daywiss.angular-user.loginService'
            wrappedService.userRole = userRoles.registered;
          } else {
            wrappedService.userRole = userRoles.invalidEmail;
-           $state.go('app.nagscreen');
+           //$state.go('app.nagscreen');
          }
         // setup token
         setToken(user.token);
